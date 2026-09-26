@@ -1,0 +1,99 @@
+MiddlewareFormApp/
+│
+├── Controllers/
+│   └── HomeController.cs
+│
+├── Middleware/
+│   ├── RequestLoggingMiddleware.cs
+│   └── FormMiddleware.cs
+│
+├── Views/
+│   └── Home/
+│       ├── Index.cshtml
+│       └── Result.cshtml
+│
+├── wwwroot/
+│
+├── Program.cs
+├── MiddlewareFormApp.csproj
+├── README.md
+│
+└── Screenshots/
+    ├── 01-project.png
+    ├── 02-form.png
+    ├── 03-middleware.png
+    ├── 04-lifecycle-console.png
+    └── 05-result.png
+
+using MiddlewareFormApp.Middleware;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Добавляем MVC
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+// Middleware 1 — показывает начало жизненного цикла
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+// Стандартные middleware ASP.NET Core
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+// Middleware 2 — работает после Routing
+app.UseMiddleware<FormMiddleware>();
+
+app.UseAuthorization();
+
+// Маршрутизация MVC
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();
+namespace MiddlewareFormApp.Middleware;
+
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+
+    public RequestLoggingMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        Console.WriteLine("=== Жизненный цикл приложения ===");
+
+        Console.WriteLine("1. Запрос поступил в приложение");
+        Console.WriteLine($"Method: {context.Request.Method}");
+        Console.WriteLine($"Path: {context.Request.Path}");
+
+        // Передаём запрос следующему middleware
+        await _next(context);
+
+        Console.WriteLine("6. Ответ сформирован");
+        Console.WriteLine($"StatusCode: {context.Response.StatusCode}");
+        Console.WriteLine("=== Конец жизненного цикла ===");
+    }
+}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Результат</title>
+</head>
+<body>
+
+    <h1>Форма успешно отправлена!</h1>
+
+    <p>Данные прошли через Middleware.</p>
+
+    <a href="/">Вернуться к форме</a>
+
+</body>
+</html>
